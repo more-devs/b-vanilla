@@ -5,44 +5,66 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-const db = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
-});
+const getConnection = async () => {
+    return await mysql.createConnection({
+        host: process.env.DB_HOST,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME
+    });
+};
 
 // GET personas
 app.get('/personas', async (req, res) => {
-    const [rows] = await db.execute('SELECT * FROM personas');
-    res.json(rows);
+    try {
+        const db = await getConnection();
+        const [rows] = await db.execute('SELECT * FROM personas');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// POST nueva persona
+// POST persona
 app.post('/personas', async (req, res) => {
     const { nombre, edad } = req.body;
-    const [result] = await db.execute('INSERT INTO personas (nombre, edad) VALUES (?, ?)', [nombre, edad]);
-    res.json({ id: result.insertId, nombre, edad });
+    try {
+        const db = await getConnection();
+        const [result] = await db.execute('INSERT INTO personas (nombre, edad) VALUES (?, ?)', [nombre, edad]);
+        res.status(201).json({ id: result.insertId, nombre, edad });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// PUT actualizar persona
+// PUT persona
 app.put('/personas/:id', async (req, res) => {
     const { id } = req.params;
     const { nombre, edad } = req.body;
-    await db.execute('UPDATE personas SET nombre = ?, edad = ? WHERE id = ?', [nombre, edad, id]);
-    res.sendStatus(204);
+    try {
+        const db = await getConnection();
+        await db.execute('UPDATE personas SET nombre = ?, edad = ? WHERE id = ?', [nombre, edad, id]);
+        res.sendStatus(204);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // DELETE persona
 app.delete('/personas/:id', async (req, res) => {
     const { id } = req.params;
-    await db.execute('DELETE FROM personas WHERE id = ?', [id]);
-    res.sendStatus(204);
+    try {
+        const db = await getConnection();
+        await db.execute('DELETE FROM personas WHERE id = ?', [id]);
+        res.sendStatus(204);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.listen(PORT, () => {
